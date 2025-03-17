@@ -8,17 +8,7 @@ using static Microsoft.AspNetCore.Http.Results;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Configuration.AddEnvironmentVariables();
-
-builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("Jwt"));
-builder.Services.Configure<BackendClientSettings>(builder.Configuration.GetSection("BackendClient"));
-
-var jwtSettings = builder.Configuration.GetSection("Jwt").Get<JwtSettings>();
-if (string.IsNullOrEmpty(jwtSettings?.Secret))
-  throw new InvalidOperationException("Jwt:Secret is not configured");
-
-if (string.IsNullOrEmpty(builder.Configuration["ApiKey"]))
-  throw new InvalidOperationException("ApiKey is not configured");
+builder.AddConfiguration();
 
 builder.Services.AddDbContext<AppDbContext>(options =>
   options.UseNpgsql(builder.Configuration.GetConnectionString("PostgreSQL"))
@@ -29,8 +19,10 @@ builder.Services.AddAuthentication(x => {
   x.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
   x.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
 }).AddJwtBearer(x => {
+  var secret = builder.Configuration.GetSection("Jwt").Get<JwtSettings>()?.Secret
+    ?? throw new InvalidOperationException("Jwt:Secret is not configured");
   x.TokenValidationParameters = new() {
-    IssuerSigningKey = new SymmetricSecurityKey(Convert.FromBase64String(jwtSettings.Secret)),
+    IssuerSigningKey = new SymmetricSecurityKey(Convert.FromBase64String(secret)),
     ValidateLifetime = true,
     ValidateIssuer = false,
     ValidateAudience = false,
@@ -41,7 +33,7 @@ builder.Services.AddAuthorization();
 
 builder.Services.AddHttpClient<BackendClient>((serviceProvider, client) => {
   var apiSettings = serviceProvider.GetRequiredService<IOptions<BackendClientSettings>>().Value;
-  client.BaseAddress = new Uri(apiSettings.BaseAddress);
+  client.BaseAddress = new(apiSettings.BaseAddress);
 });
 
 var app = builder.Build();
@@ -55,8 +47,7 @@ app.MapPost("/auth/telegram", async (
   [FromServices] AppDbContext dbContext,
   [FromServices] IOptions<JwtSettings> jwtOptions,
   [FromServices] IConfiguration configuration,
-  [FromServices] BackendClient backendClient,
-  HttpRequest request
+  [FromServices] BackendClient backendClient
 ) => {
   if (string.IsNullOrWhiteSpace(data.tgUsername))
     return BadRequest("Empty username");
@@ -71,10 +62,10 @@ app.MapPost("/auth/telegram", async (
 
   if (await users.FirstOrDefaultAsync(u => u.TgUserId == tgUserId || u.TgUsername == tgUsername)
       is { UserId: var userId, Username: var username }) {
-    return Ok(new {
-      Token = TokenService.GenerateToken(jwtSecret, expirationTime, userId, username),
-      ExpirationTime = expirationTime
-    });
+    return Ok(new TokenResp(
+      TokenService.GenerateToken(jwtSecret, expirationTime, userId, username),
+      expirationTime
+    ));
   }
 
   var user = new User(Guid.NewGuid(), tgUsername, tgUserId, tgUsername);
@@ -83,8 +74,6 @@ app.MapPost("/auth/telegram", async (
   switch (await backendClient.CreateMeAsync(token)) {
     case CreateMeResult.BadRequest(var err):
       return BadRequest(err);
-    case CreateMeResult.Unauthorized(var err):
-      return Unauthorized();
     case CreateMeResult.Error(var err):
       return InternalServerError(err);
   }
@@ -92,10 +81,7 @@ app.MapPost("/auth/telegram", async (
   await users.AddAsync(user);
   await dbContext.SaveChangesAsync();
 
-  return Ok(new {
-    Token = token,
-    ExpirationTime = expirationTime
-  });
+  return Ok(new TokenResp(token, expirationTime));
 });
 
 app.MapGet("users/{q}", async (
@@ -108,18 +94,5 @@ app.MapGet("users/{q}", async (
 
 app.Run();
 
-public class JwtSettings {
-  public string Secret { get; set; } = default!;
-  public int ExpirySeconds { get; set; }
-
-  public void Deconstruct(out string secret, out int expirySeconds) {
-    secret = Secret;
-    expirySeconds = ExpirySeconds;
-  }
-}
-
-public class BackendClientSettings() {
-  public string BaseAddress { get; set; } = default!;
-}
-
 record TgAuthData(long tgUserId, string tgUsername);
+record TokenResp(string Token, DateTime ExpirationTime);

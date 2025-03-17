@@ -22,11 +22,9 @@
         devShells.default = pkgs.mkShell {
           packages = with pkgs; [
             nixd
-
-            dotnetCorePackages.sdk_9_0
             omnisharp-roslyn
 
-            postman
+            dotnetCorePackages.sdk_9_0
           ];
 
           allowUnfree = true;
