@@ -1,0 +1,11 @@
+**/.dockerignore
+**/.git
+**/.vs
+**/bin
+**/obj
+**/packages
+Dockerfile*
+docker-compose*
+*.db
+*.userprefs
+*.sln.iml

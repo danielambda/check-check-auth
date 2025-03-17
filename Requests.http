@@ -1,0 +1,16 @@
+POST http://localhost:5183/auth/telegram
+Content-Type: application/json
+X-API-Key: 7oc_JdXgdF60JsqD1lAiW2nWN-DDdoRaITJaQLRTFVQKGOXZ1k0e3P9FsQ33pEwwgGiO5OIpUgtkwOqq_aw3nnH9uhCAPc_kHV43lLPuW_SBJlKzcvlLYwBbKA5RCRjY
+
+{
+  "tgUserId": 1899081722,
+  "tgUsername": "danielambda"
+}
+
+###
+GET http://localhost:5183/users/username:danielambda
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJkYXQiOnsidXNlcklkIjoiMDlmMDg4MDctYmFjYS00ZGE0LWJmYmEtNmFjYjI4MzZkMjQ0IiwidXNlcm5hbWUiOiJkYW5pZWxhbWJkYSJ9LCJuYmYiOjE3NDIxNzEwMjUsImV4cCI6MTc0MjE3NDYyNSwiaWF0IjoxNzQyMTcxMDI1fQ.ZI_PbKRvIOPD-1-kbEwPFZBn720VDzcUfIeiDqnb670
+
+###
+GET http://localhost:5183/users/tg-username:danielambda
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJkYXQiOnsidXNlcklkIjoiMDlmMDg4MDctYmFjYS00ZGE0LWJmYmEtNmFjYjI4MzZkMjQ0IiwidXNlcm5hbWUiOiJkYW5pZWxhbWJkYSJ9LCJuYmYiOjE3NDIxNzEwMjUsImV4cCI6MTc0MjE3NDYyNSwiaWF0IjoxNzQyMTcxMDI1fQ.ZI_PbKRvIOPD-1-kbEwPFZBn720VDzcUfIeiDqnb670

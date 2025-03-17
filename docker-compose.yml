@@ -1,0 +1,58 @@
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: check-check-auth:latest
+    ports:
+      - "5183:5183"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:5183
+      ConnectionStrings__PostgreSQL: Host=db;Port=5432;Database=${DB_NAME};Username=${DB_USER};Password=${DB_PASSWORD}
+      Jwt__Secret:
+      Jwt__ExpirySeconds:
+      BackendClient__BaseAddress:
+      ApiKey:
+    depends_on:
+      migrator:
+        condition: service_completed_successfully
+      db:
+        condition: service_healthy
+    networks:
+      - auth-network
+
+  migrator:
+    build:
+      context: .
+      dockerfile: Dockerfile.migrator
+    environment:
+      ConnectionStrings__PostgreSQL: Host=db;Port=5432;Database=${DB_NAME};Username=${DB_USER};Password=${DB_PASSWORD}
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - auth-network
+
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - postgres:/var/lib/postgresql/data
+    networks:
+      - auth-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres:
+
+networks:
+  auth-network:
+    driver: bridge
